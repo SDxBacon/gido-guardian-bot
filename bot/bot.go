@@ -5,7 +5,9 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 
+	"github.com/SDxBacon/gido-guardian-bot/gido"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -53,7 +55,6 @@ var (
 )
 
 func Run() {
-
 	// create a session
 	discord, err := discordgo.New("Bot " + Token)
 	if err != nil {
@@ -109,9 +110,9 @@ func onReady(s *discordgo.Session, event *discordgo.Ready) {
 func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.Type == discordgo.InteractionApplicationCommand {
 		switch i.ApplicationCommandData().Name {
-		// case "wait-info":
+		// command: "wait-info"
 		case Commands["WaitInfo"]:
-			waitInfo, err := getAndParseWaitInfo()
+			waitInfoMessage, err := gido.GetCurrentWaitInfoMessage()
 			if err != nil {
 				log.Printf("error: %v", err)
 				return
@@ -120,14 +121,14 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: formatWaitInfo(waitInfo),
+					Content: waitInfoMessage,
 				},
 			})
 			if err != nil {
 				log.Printf("error: %v", err)
 			}
 
-		// case "watching":
+		// command: "watching"
 		case Commands["Watching"]:
 			options := i.ApplicationCommandData().Options
 			number := int(options[0].IntValue())
@@ -140,7 +141,7 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			stopChan := make(chan bool)
 			watchingTasks[i.Member.User.ID] = stopChan
 
-			go watchTicketNumber(s, i, number, stopChan)
+			go gido.WatchTicketNumber(s, i, number, stopChan)
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -149,11 +150,11 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 				},
 			})
 
-		// case "stop-watching":
+		// command: "stop-watching"
 		case Commands["StopWatching"]:
-			stopWatchTicket(s, i)
+			gido.StopWatchTicket(s, i)
 
-		// case "clean-gido":
+		// command: "clean-gido"
 		case Commands["CleanGido"]:
 			err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
@@ -181,4 +182,44 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			})
 		}
 	}
+}
+
+func cleanBotMessages(s *discordgo.Session, channelID string) (int, error) {
+	var deletedCount int
+	var lastMessageID string
+	for {
+		messages, err := s.ChannelMessages(channelID, 100, lastMessageID, "", "")
+		if err != nil {
+			return deletedCount, fmt.Errorf("獲取訊息失敗: %v", err)
+		}
+
+		if len(messages) == 0 {
+			break
+		}
+
+		var botMessages []string
+		for _, msg := range messages {
+			if msg.Author.ID == BotID {
+				botMessages = append(botMessages, msg.ID)
+			}
+			lastMessageID = msg.ID
+		}
+
+		if len(botMessages) > 0 {
+			err = s.ChannelMessagesBulkDelete(channelID, botMessages)
+			if err != nil {
+				return deletedCount, fmt.Errorf("批量刪除訊息失敗: %v", err)
+			}
+			deletedCount += len(botMessages)
+		}
+
+		if len(messages) < 100 {
+			break
+		}
+
+		// 為了避免超過 Discord API 的速率限制，在每次批量刪除後稍作暫停
+		time.Sleep(1 * time.Second)
+	}
+
+	return deletedCount, nil
 }
