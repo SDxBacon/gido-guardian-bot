@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/SDxBacon/gido-guardian-bot/gido"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -51,7 +50,6 @@ var (
 			Description: "Delete all messages sent by the bot in this channel",
 		},
 	}
-	watchingTasks = make(map[string]chan bool)
 )
 
 func Run() {
@@ -63,7 +61,10 @@ func Run() {
 
 	// add a event handler
 	discord.AddHandler(onReady)
-	discord.AddHandler(interactionCreate)
+	discord.AddHandler(handleWaitInfoInteraction)
+	discord.AddHandler(handleWatchingInteraction)
+	discord.AddHandler(handleStopWatchingInteraction)
+	discord.AddHandler(handleCleanGidoInteraction)
 
 	// open session
 	discord.Open()
@@ -104,83 +105,6 @@ func onReady(s *discordgo.Session, event *discordgo.Ready) {
 			log.Panicf("無法創建 '%v' 命令: %v", v.Name, err)
 		}
 		registeredCommands[i] = cmd
-	}
-}
-
-func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Type == discordgo.InteractionApplicationCommand {
-		switch i.ApplicationCommandData().Name {
-		// command: "wait-info"
-		case Commands["WaitInfo"]:
-			waitInfoMessage, err := gido.GetCurrentWaitInfoMessage()
-			if err != nil {
-				log.Printf("error: %v", err)
-				return
-			}
-
-			err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: waitInfoMessage,
-				},
-			})
-			if err != nil {
-				log.Printf("error: %v", err)
-			}
-
-		// command: "watching"
-		case Commands["Watching"]:
-			options := i.ApplicationCommandData().Options
-			number := int(options[0].IntValue())
-
-			// Stop any existing watching task for this user
-			if stopChan, exists := watchingTasks[i.Member.User.ID]; exists {
-				close(stopChan)
-			}
-
-			stopChan := make(chan bool)
-			watchingTasks[i.Member.User.ID] = stopChan
-
-			go gido.WatchTicketNumber(s, i, number, stopChan)
-
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("開始監視票號 %d", number),
-				},
-			})
-
-		// command: "stop-watching"
-		case Commands["StopWatching"]:
-			gido.StopWatchTicket(s, i)
-
-		// command: "clean-gido"
-		case Commands["CleanGido"]:
-			err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "正在清理訊息...",
-				},
-			})
-			if err != nil {
-				log.Printf("Error responding to interaction: %v", err)
-				return
-			}
-
-			deletedCount, err := cleanBotMessages(s, i.ChannelID)
-			if err != nil {
-				errMsg := fmt.Sprintf("清理訊息時發生錯誤: %v", err)
-				s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-					Content: &errMsg,
-				})
-				return
-			}
-
-			msg := fmt.Sprintf("已成功刪除 %d 條機器人訊息", deletedCount)
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &msg,
-			})
-		}
 	}
 }
 
