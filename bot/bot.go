@@ -76,20 +76,6 @@ func Run() {
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	// delete all commands
-	cmds, err := discord.ApplicationCommands(AppID, GuildID)
-	if err != nil {
-		log.Panicf("Cannot fetch commands: %v", err)
-	} else {
-		for _, v := range cmds {
-			err := discord.ApplicationCommandDelete(discord.State.User.ID, GuildID, v.ID)
-			if err != nil {
-				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
-			}
-		}
-		fmt.Println("Commands deleted....")
-	}
-
 	fmt.Println("Bot stopped....")
 }
 
@@ -97,15 +83,46 @@ func onReady(s *discordgo.Session, event *discordgo.Ready) {
 	log.Printf("以 %v 身份登入", s.State.User.Username)
 	BotID = s.State.User.ID
 
-	log.Println("正在註冊命令...")
-	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
-	for i, v := range commands {
-		cmd, err := s.ApplicationCommandCreate(BotID, GuildID, v)
-		if err != nil {
-			log.Panicf("無法創建 '%v' 命令: %v", v.Name, err)
-		}
-		registeredCommands[i] = cmd
+	// Get all existing commands from server
+	existingCommands, err := s.ApplicationCommands(s.State.User.ID, GuildID)
+	if err != nil {
+		log.Panicf("Getting existing commands with err:%v", err)
+		return
 	}
+
+	// Map of existing commands for quick lookup
+	existingCommandMap := make(map[string]*discordgo.ApplicationCommand)
+	for _, cmd := range existingCommands {
+		existingCommandMap[cmd.Name] = cmd
+	}
+
+	// Register or update commands based on local `commands` list
+	fmt.Printf("%s %s", time.Now().Format("2006/01/02 15:04:05"), "Registering Commands...")
+	for _, v := range commands {
+		existingCmd, exists := existingCommandMap[v.Name]
+		if !exists || existingCmd.Description != v.Description {
+			// Command does not exist or description has changed; create or update
+			_, err := s.ApplicationCommandCreate(BotID, GuildID, v)
+			if err != nil {
+				log.Panicf("Unable to register or update '%v' command: %v", v.Name, err)
+			}
+		}
+		// Remove the command from the map, so only extra commands remain
+		delete(existingCommandMap, v.Name)
+	}
+	fmt.Printf("[\033[32mOK\033[0m]\n")
+
+	// Delete extra commands that are not in the local `commands` list
+	fmt.Printf("%s %s", time.Now().Format("2006/01/02 15:04:05"), "Deleting Legacy Commands...")
+	for _, cmd := range existingCommandMap {
+		err := s.ApplicationCommandDelete(BotID, GuildID, cmd.ID)
+		if err != nil {
+			log.Printf("Failed to delete extra command '%v': %v", cmd.Name, err)
+		} else {
+			log.Printf("Deleted extra command: %v", cmd.Name)
+		}
+	}
+	fmt.Printf("[\033[32mOK\033[0m]\n")
 }
 
 func cleanBotMessages(s *discordgo.Session, channelID string) (int, error) {
