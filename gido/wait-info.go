@@ -10,18 +10,33 @@ import (
 // It includes the current ticket number, which can be either an integer or a string,
 // and the count of tickets that are currently waiting.
 type WaitInfo struct {
-	CurrentTicketNumber interface{} // 可以是 int 或 string
-	WaitingTicketsCount interface{}
+	RawData             string
+	CurrentTicketNumber int
+	WaitingTicketsCount int
 }
 
 // convert WaitInfo to a message
-func toMessage(info WaitInfo) string {
-	return fmt.Sprintf("當前叫號: %v，總共等待組數: %v", info.CurrentTicketNumber, info.WaitingTicketsCount)
+func (info *WaitInfo) toMessage() string {
+	currentTicket := strconv.Itoa(info.CurrentTicketNumber)
+	waitingTickets := strconv.Itoa(info.WaitingTicketsCount)
+
+	if info.CurrentTicketNumber == -1 {
+		currentTicket = "----"
+	}
+	if info.WaitingTicketsCount == -1 {
+		waitingTickets = "----"
+	}
+
+	return fmt.Sprintf("當前叫號: %v，總共等待組數: %v", currentTicket, waitingTickets)
+}
+
+func (info *WaitInfo) validateCurrentTicketNumber() bool {
+	return info.CurrentTicketNumber > 0
 }
 
 // parse the wait information from the API response body
-func parseBody(info string) (WaitInfo, error) {
-	var output WaitInfo
+func parseWaitInfoFromResponse(info string) (WaitInfo, error) {
+	var output WaitInfo = WaitInfo{RawData: info}
 
 	parts := strings.Split(info, "|")
 	if len(parts) != 3 {
@@ -30,20 +45,18 @@ func parseBody(info string) (WaitInfo, error) {
 
 	// skip the first part, which is unless data
 
-	// 第二部分是當前叫號
-	CurrentTicketNumber, err := strconv.Atoi(parts[1])
+	// chunk 2, represene the current ticket number
+	currentTicketNumber, err := strconv.Atoi(parts[1])
 	if err != nil {
-		// 如果無法轉換為整數，保留為字符串
-		output.CurrentTicketNumber = parts[1]
+		output.CurrentTicketNumber = -1
 	} else {
-		output.CurrentTicketNumber = CurrentTicketNumber
+		output.CurrentTicketNumber = currentTicketNumber
 	}
 
-	// 第三部分，解析總共等待組數
+	// chunk 3, represent the count of waiting tickets
 	waitingTicketsCount, err := strconv.Atoi(parts[2])
 	if err != nil {
-		// 如果無法轉換為整數，保留為字符串
-		output.WaitingTicketsCount = parts[2]
+		output.WaitingTicketsCount = -1
 	} else {
 		output.WaitingTicketsCount = waitingTicketsCount
 	}
