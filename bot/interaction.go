@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/SDxBacon/gido-guardian-bot/gido"
+	"github.com/SDxBacon/go-utils/discord/interaction"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -15,20 +16,17 @@ func handleWaitInfoInteraction(s *discordgo.Session, i *discordgo.InteractionCre
 		return
 	}
 
+	// Create a new interaction responder
+	responder := interaction.NewInteractionResponder(s, i.Interaction)
+
 	// Get the current wait info message
 	waitInfoMessage, err := gido.GetCurrentWaitInfoMessage()
 	if err != nil {
-		log.Printf("error: %v", err)
+		responder.RespondWithError("Fail to GET wait info from GIDO", err)
 		return
 	}
-	// Respond to the interaction with the wait info message
-	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: waitInfoMessage,
-		},
-	})
-	// Log any errors
+
+	err = responder.Respond(waitInfoMessage)
 	if err != nil {
 		log.Printf("error: %v", err)
 	}
@@ -71,12 +69,11 @@ func handleCleanGidoInteraction(s *discordgo.Session, i *discordgo.InteractionCr
 		return
 	}
 
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "正在清理訊息...",
-		},
-	})
+	// Create a new interaction responder
+	responder := interaction.NewInteractionResponder(s, i.Interaction)
+
+	msg := "正在清理訊息..."
+	err := responder.Respond(msg)
 	if err != nil {
 		log.Printf("Error responding to interaction: %v", err)
 		return
@@ -84,15 +81,11 @@ func handleCleanGidoInteraction(s *discordgo.Session, i *discordgo.InteractionCr
 
 	deletedCount, err := cleanBotMessages(s, i.ChannelID)
 	if err != nil {
-		errMsg := fmt.Sprintf("清理訊息時發生錯誤: %v", err)
-		s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-			Content: &errMsg,
-		})
+		msg += fmt.Sprintf("\n❌ 清理訊息時發生錯誤: %v", err)
+		responder.Respond(msg)
 		return
 	}
 
-	msg := fmt.Sprintf("已成功刪除 %d 條機器人訊息", deletedCount)
-	s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-		Content: &msg,
-	})
+	msg += fmt.Sprintf("\n✅ 成功刪除 %d 條機器人訊息", deletedCount)
+	responder.Respond(msg)
 }
