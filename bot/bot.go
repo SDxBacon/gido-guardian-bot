@@ -147,6 +147,7 @@ func cleanBotMessages(s *discordgo.Session, channelID string) (int, error) {
 		}
 
 		if len(botMessages) > 0 {
+			// FIXME: You can only bulk delete messages that are under 14 days old.
 			err = s.ChannelMessagesBulkDelete(channelID, botMessages)
 			if err != nil {
 				return deletedCount, fmt.Errorf("批量刪除訊息失敗: %v", err)
