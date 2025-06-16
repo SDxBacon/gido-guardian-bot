@@ -80,6 +80,11 @@ func NewTicketTracker(ticketID int, opts ...TicketTrackerOption) *TicketTracker 
 
 func (tt *TicketTracker) Start() {
 	go func() {
+		// Ensure that the onStop is called when the goroutine exits
+		defer func() {
+			tt.onStop(tt.trackingTicketId)
+		}()
+
 		// if onStart is set, call it with the target ticket number
 		tt.onStart(tt.trackingTicketId)
 
@@ -123,17 +128,11 @@ func (tt *TicketTracker) Start() {
 	}()
 }
 
-// Stop terminates the ticket tracking operation.
-// It cancels the internal context to stop the background goroutine
-// and calls the optional onStop callback function with the current
-// target ticket number as a string if it has been configured.
+// Stop gracefully terminates the ticket tracking process.
+// It cancels the context used by the tracker, which signals any running goroutines to exit.
 func (tt *TicketTracker) Stop() {
 	// Cancel the context to stop the goroutine
 	tt.cancel()
-	// if onStop is set, call it with the target ticket number
-	if tt.onStop != nil {
-		tt.onStop(tt.trackingTicketId)
-	}
 }
 
 func (tt *TicketTracker) GetTrackingTicketId() int {
