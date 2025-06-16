@@ -107,14 +107,17 @@ func handleStopWatchingInteraction(s *discordgo.Session, i *discordgo.Interactio
 		return
 	}
 
+	responder := interaction.NewInteractionResponder(s, i.Interaction)
+
 	// Get the ticker tracker for the user
 	tickerTracker := GetUserTicketTracker(i.Member.User.ID)
 	if tickerTracker == nil {
-		responder := interaction.NewInteractionResponder(s, i.Interaction)
 		responder.Respond("您沒有正在追蹤的 Ticket")
 		return
 	}
+
 	// Stop watching the target number
+	responder.Respond(fmt.Sprintf("正在停止追蹤 Ticket: %d", tickerTracker.GetTrackingTicketId()))
 	tickerTracker.Stop()
 }
 
