@@ -2,7 +2,6 @@ package gido
 
 import (
 	"context"
-	"strconv"
 	"time"
 )
 
@@ -110,7 +109,7 @@ func (tt *TicketTracker) Start() {
 				// If the wait count is greater than zero, it means the ticket is still waiting
 				if waitCount > 0 {
 					tt.onMonitorUpdate(
-						strconv.Itoa(currentNumber),
+						WaitInfoIntField(currentNumber).String(),
 						waitCount,
 					)
 					continue
