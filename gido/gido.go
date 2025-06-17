@@ -1,12 +1,7 @@
 package gido
 
-func GetCurrentWaitInfoMessage() (string, error) {
-	waitInfo, err := fetchWaitInfo()
-	if err != nil {
-		return "", err
-	}
-
-	return waitInfo.toMessage(), nil
+func GetCurrentWaitInfo() (WaitInfo, error) {
+	return fetchWaitInfo()
 }
 
 // func StopWatchTicket(s *discordgo.Session, i *discordgo.InteractionCreate) {

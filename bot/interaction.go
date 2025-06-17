@@ -19,12 +19,14 @@ func handleWaitInfoInteraction(s *discordgo.Session, i *discordgo.InteractionCre
 	// Create a new interaction responder
 	responder := interaction.NewInteractionResponder(s, i.Interaction)
 
-	// Get the current wait info message
-	waitInfoMessage, err := gido.GetCurrentWaitInfoMessage()
+	// Get the current wait info struct
+	waitInfo, err := gido.GetCurrentWaitInfo()
 	if err != nil {
 		responder.RespondWithError("Fail to GET wait info from GIDO", err)
 		return
 	}
+
+	waitInfoMessage := fmt.Sprintf("當前叫號: %s，總共等待組數: %s", waitInfo.CurrentNumber.String(), waitInfo.TotalWaiting.String())
 
 	err = responder.Respond(waitInfoMessage)
 	if err != nil {

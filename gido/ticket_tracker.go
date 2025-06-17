@@ -103,14 +103,14 @@ func (tt *TicketTracker) Start() {
 					continue
 				}
 
-				currentTicketNumber := currentWaitInfo.CurrentTicketNumber
+				currentNumber := int(currentWaitInfo.CurrentNumber)
 
 				// Calculate the wait count
-				waitCount := tt.trackingTicketId - currentTicketNumber
+				waitCount := tt.trackingTicketId - currentNumber
 				// If the wait count is greater than zero, it means the ticket is still waiting
 				if waitCount > 0 {
 					tt.onMonitorUpdate(
-						strconv.Itoa(currentTicketNumber),
+						strconv.Itoa(currentNumber),
 						waitCount,
 					)
 					continue
