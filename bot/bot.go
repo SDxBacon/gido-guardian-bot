@@ -67,7 +67,11 @@ func Run() {
 	discord.AddHandler(handleCleanGidoInteraction)
 
 	// open session
-	discord.Open()
+	err = discord.Open()
+	if err != nil {
+		log.Fatal("Error opening connection,", err)
+		return
+	}
 	defer discord.Close() // close session, after function termination
 
 	// keep bot running untill there is NO os interruption (ctrl + C)
