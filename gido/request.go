@@ -21,7 +21,7 @@ func fetchWaitInfo() (WaitInfo, error) {
 	// get current timestamp in milliseconds
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 	// construct the URL
-	url := fmt.Sprintf("http://vpn.weshine.com.tw:8088/WaitInfoWeb/WaitInfo_GIDOHandler.ashx?act=WaitInfo&DEP_CODE=吉哆火鍋百匯&Kind=a1&date=%s&_=%d", currentDate, timestamp)
+	url := fmt.Sprintf("https://vpn.weshine.com.tw:8089/WaitInfoWeb/WaitInfo_GIDOHandler.ashx?act=WaitInfo&DEP_CODE=吉哆火鍋百匯&Kind=a1&date=%s&_=%d", currentDate, timestamp)
 
 	// create an HTTP client with a timeout of 2 seconds
 	client := &http.Client{
