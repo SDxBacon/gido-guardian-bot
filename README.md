@@ -42,7 +42,8 @@ gido-guardian-bot/
 
 ### 前置需求
 
-- Go 1.x 或更新版本
+- Go 1.x 或更新版本（本地開發）
+- Docker 和 Docker Compose（容器化部署）
 - 有效的 Discord Bot Token
 - 有 [吉哆火鍋百匯](https://www.weshine.com.tw/) 等候系統的存取權限
 
@@ -54,21 +55,80 @@ gido-guardian-bot/
    cd gido-guardian-bot
    ```
 
-2. **安裝依賴**
-   ```bash
-   go mod download
-   ```
+2. **設定環境變數**
 
-3. **設定環境變數**
-   
    建立 `.env` 檔案或設定系統環境變數：
    ```bash
    export BOT_TOKEN="your_bot_token_here"
    ```
 
+### 本地開發（直接執行）
+
+3. **安裝依賴**
+   ```bash
+   go mod download
+   ```
+
 4. **執行應用程式**
    ```bash
    go run main.go
+   ```
+
+### 使用 Docker
+
+#### 使用 Docker Compose（推薦）
+
+3. **執行容器**
+   ```bash
+   docker-compose up -d
+   ```
+
+   > 注意：`docker-compose.yml` 會自動從 `.env` 檔案讀取 `BOT_TOKEN` 環境變數
+
+4. **檢查執行狀態**
+   ```bash
+   docker-compose logs -f gido-guardian-bot
+   ```
+
+5. **停止容器**
+   ```bash
+   docker-compose down
+   ```
+
+#### 使用 Docker CLI
+
+3. **建立 Docker 映像**
+   ```bash
+   docker build -t gido-guardian-bot:latest .
+   ```
+
+4. **執行容器**
+
+   使用 `.env` 檔案：
+   ```bash
+   docker run -d \
+     --name gido-guardian-bot \
+     --env-file .env \
+     gido-guardian-bot:latest
+   ```
+
+   或直接指定環境變數：
+   ```bash
+   docker run -d \
+     --name gido-guardian-bot \
+     -e BOT_TOKEN="your_bot_token_here" \
+     gido-guardian-bot:latest
+   ```
+
+5. **檢查日誌**
+   ```bash
+   docker logs -f gido-guardian-bot
+   ```
+
+6. **停止容器**
+   ```bash
+   docker stop gido-guardian-bot
+   docker rm gido-guardian-bot
    ```
 
 ## 使用方式
