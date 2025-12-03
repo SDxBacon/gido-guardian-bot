@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  gido-guardian-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gido-guardian-bot
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - gido-network
+
+networks:
+  gido-network:
+    driver: bridge
